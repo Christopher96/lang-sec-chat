@@ -1,13 +1,12 @@
 module.exports = {
   commands: {
-    CHANGE_USERNAME: "Change username",
-    LIST_USERS: "List users",
-    VIEW_MESSAGES: "View messages",
-    CONNECT: "Connect",
-    MESSAGE: "Message user",
-    KICK: "Kick user",
-    LEAVE: "Leave",
-    EXIT: "Exit",
+    CHANGE_USERNAME: "change_username",
+    CHANGE_DATA: "change_data",
+    LIST_USERS: "list_users",
+    VIEW_MESSAGES: "view_messages",
+    MESSAGE: "message",
+    KICK: "kick",
+    EXIT: "exit",
   },
   events: {
     KICK: "kick",

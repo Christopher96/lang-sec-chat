@@ -1,7 +1,6 @@
 "use strict";
 const constants = require("../constants");
-const commands = constants.commands;
-const events = constants.events;
+const { commands, events } = constants.commands;
 
 const fs = require("fs");
 
@@ -53,21 +52,17 @@ function saveDataType(type, newObj, callback) {
   });
 }
 
-function getSavedDataType(type) {
-  let savedData = getSavedData();
-  return savedData[type];
-}
-
 let username = null;
 
-function checkUsername() {
-  username = getSavedDataType("username");
-  if (username != null) {
-    socket.emit(events.COMMAND, {
-      command: commands.CHANGE_USERNAME,
-      username,
-    });
+function synchronizeData() {
+  let data = getSavedData();
+  if (data["username"] != null) {
+    username = data["username"];
   }
+  socket.emit(events.COMMAND, {
+    command: commands.CHANGE_DATA,
+    data,
+  });
 }
 
 function changeUsername() {
@@ -157,11 +152,11 @@ function promptCommands() {
   logId();
 
   let choices = [
-    commands.CHANGE_USERNAME,
-    commands.LIST_USERS,
-    commands.MESSAGE,
-    commands.VIEW_MESSAGES,
-    commands.EXIT,
+    { name: "Change username", value: commands.CHANGE_USERNAME },
+    { name: "List users", value: commands.LIST_USERS },
+    { name: "Message user", value: commands.MESSAGE },
+    { name: "View messages", value: commands.VIEW_MESSAGES },
+    { name: "Exit", value: commands.EXIT },
   ];
 
   inquirer
@@ -291,7 +286,7 @@ socket.on(events.MESSAGE_RECEIVED, (message) => {
 });
 
 socket.on("connect", () => {
-  checkUsername();
+  synchronizeData();
   promptCommands();
 });
 

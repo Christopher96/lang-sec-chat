@@ -5,14 +5,14 @@ module.exports = {
     LIST_USERS: "list_users",
     VIEW_MESSAGES: "view_messages",
     MESSAGE: "message",
-    KICK: "kick",
+    VERSION: "version",
     EXIT: "exit",
   },
   events: {
-    KICK: "kick",
     MESSAGE: "message",
     MESSAGE_RECEIVED: "message_received",
     COMMAND: "command",
     COMMAND_RESPONSE: "command_response",
+    VERSION: "version",
   },
 };

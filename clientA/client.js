@@ -1,7 +1,5 @@
 "use strict";
-const constants = require("../constants");
-const { commands, events } = constants.commands;
-
+const { commands, events } = require("../constants");
 const fs = require("fs");
 
 require.extensions[".txt"] = function (module, filename) {
@@ -43,25 +41,30 @@ function getSavedData() {
   return savedData;
 }
 
+let user = {};
+
 function saveDataType(type, newObj, callback) {
   let savedData = getSavedData();
   savedData[type] = newObj;
+  user = savedData;
 
   fs.writeFile(savedName, JSON.stringify(savedData), "utf8", function () {
     if (callback != null) callback();
   });
 }
 
-let username = null;
-
 function synchronizeData() {
   let data = getSavedData();
-  if (data["username"] != null) {
-    username = data["username"];
-  }
+  user = data;
+
+  socket.once(events.COMMAND_RESPONSE, (response) => {
+    if (response.command === commands.CHANGE_DATA) {
+      promptCommands();
+    }
+  });
   socket.emit(events.COMMAND, {
     command: commands.CHANGE_DATA,
-    data,
+    updated: data,
   });
 }
 
@@ -69,7 +72,8 @@ function changeUsername() {
   socket.once(events.COMMAND_RESPONSE, (response) => {
     if (response.command === commands.CHANGE_USERNAME) {
       if (response.data != false) {
-        username = response.data;
+        let username = response.data;
+        saveDataType("username", username);
         console.log("\nUsername changed to [%s]\n", username);
       } else {
         console.log("\nUnable to change username\n");
@@ -88,7 +92,6 @@ function changeUsername() {
     ])
     .then(function (answers) {
       let username = answers.username;
-      saveDataType("username", username);
 
       socket.emit(events.COMMAND, {
         command: commands.CHANGE_USERNAME,
@@ -99,18 +102,9 @@ function changeUsername() {
 
 function logId() {
   console.log(ascii);
-  if (username != null)
-    console.log("Connected as: [%s] %s\n", username, socket.id);
+  if (user.username != null)
+    console.log("Connected as: [%s] %s\n", user.username, socket.id);
   else console.log("Connected as: %s\n", socket.id);
-}
-
-function isEmpty(obj) {
-  return Object.keys(obj).length === 0;
-}
-
-function clearLine() {
-  readline.clearLine(process.stdout, 0);
-  readline.cursorTo(process.stdout, 0);
 }
 
 function clearConsole() {
@@ -156,6 +150,7 @@ function promptCommands() {
     { name: "List users", value: commands.LIST_USERS },
     { name: "Message user", value: commands.MESSAGE },
     { name: "View messages", value: commands.VIEW_MESSAGES },
+    { name: "Version", value: commands.VERSION },
     { name: "Exit", value: commands.EXIT },
   ];
 
@@ -182,13 +177,11 @@ function promptCommands() {
             messageUser(selectedUser);
           });
           break;
-        case commands.KICK:
-          promptSelectUser((selectedUser) => {
-            kickUser(selectedUser);
-          });
-          break;
         case commands.VIEW_MESSAGES:
           printMessages();
+          break;
+        case commands.VERSION:
+          getVersion();
           break;
         case commands.EXIT:
           process.exit(0);
@@ -214,6 +207,14 @@ function getUserStrings(users) {
   return strings;
 }
 
+function getVersion() {
+  socket.once(events.VERSION, (response) => {
+    printTitle(`Server version is ${response}`);
+    waitForKey(promptCommands);
+  });
+  socket.emit(events.VERSION);
+}
+
 function listUsers() {
   socket.once(events.COMMAND_RESPONSE, (response) => {
     if (response.command === commands.LIST_USERS) {
@@ -234,25 +235,30 @@ function listUsers() {
 function promptSelectUser(callback) {
   socket.once(events.COMMAND_RESPONSE, (response) => {
     if (response.command === commands.LIST_USERS) {
-      let choices = response.data.map((user) => {
-        return {
-          name: getUserString(user),
-          value: user.id,
-        };
-      });
-
-      inquirer
-        .prompt([
-          {
-            message: "Select a user",
-            type: "list",
-            choices,
-            name: "selectedUser",
-          },
-        ])
-        .then(function (answers) {
-          callback(answers.selectedUser);
+      if (response.data.length > 0) {
+        let choices = response.data.map((user) => {
+          return {
+            name: getUserString(user),
+            value: user.id,
+          };
         });
+
+        inquirer
+          .prompt([
+            {
+              message: "Select a user",
+              type: "list",
+              choices,
+              name: "selectedUser",
+            },
+          ])
+          .then(function (answers) {
+            callback(answers.selectedUser);
+          });
+      } else {
+        console.log("\nNo available users\n");
+        waitForKey(promptCommands);
+      }
     }
   });
   socket.emit(events.COMMAND, {
@@ -287,7 +293,6 @@ socket.on(events.MESSAGE_RECEIVED, (message) => {
 
 socket.on("connect", () => {
   synchronizeData();
-  promptCommands();
 });
 
 // on reconnection, reset the transports option, as the Websocket
